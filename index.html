@@ -580,9 +580,9 @@ function buildSegKeys(steps) {
   for (let i = 0; i < steps.length - 1; i++) {
     const { row: ri, col: ci } = steps[i];
     const { col: ci1 } = steps[i + 1];
-    keys.push({ key: `v_${ci}_${ri + 1}`, dir: 1 });
+    keys.push({ key: `v_${ci}_${ri + 1}`, reverse: false });
     if (ci !== ci1) {
-      keys.push({ key: `h_${ri + 1}_${Math.min(ci, ci1)}`, dir: ci < ci1 ? 1 : -1 });
+      keys.push({ key: `h_${ri + 1}_${Math.min(ci, ci1)}`, reverse: ci > ci1 });
     }
   }
   return keys;
@@ -601,16 +601,23 @@ function animatePath(steps, segs, color) {
       if (!seg || seg.len < 0.5) { next(); return; }
 
       const ov = seg.el.cloneNode();
+      
+      if (info.reverse) {
+        const d = ov.getAttribute('d');
+        const m = d.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+Q\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)/);
+        if (m) {
+          ov.setAttribute('d', `M ${m[5]} ${m[6]} Q ${m[3]} ${m[4]} ${m[1]} ${m[2]}`);
+        }
+      }
+      
       ov.setAttribute('stroke', color);
       ov.setAttribute('stroke-width', '5');
       ov.style.strokeDasharray  = seg.len;
-      
-      const startOffset = info.dir === 1 ? seg.len : -seg.len;
-      ov.style.strokeDashoffset = startOffset;
+      ov.style.strokeDashoffset = seg.len;
       seg.el.parentNode.appendChild(ov);
 
       ov.animate(
-        [{ strokeDashoffset: startOffset }, { strokeDashoffset: 0 }],
+        [{ strokeDashoffset: seg.len }, { strokeDashoffset: 0 }],
         { duration: Math.max(60, (seg.len / SPEED) * 1000), fill: 'forwards', easing: 'linear' }
       ).onfinish = next;
     }
