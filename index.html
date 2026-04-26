@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#faf7f0">
+  <title>あみだくじ 🐾</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=M+PLUS+Rounded+1c:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    /* ─── Reset ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #faf7f0;
+      --bg2:        #fff8f4;
+      --bg3:        #f4f8ff;
+      --pink:       #f9a8d4;
+      --pink-d:     #db2777;
+      --blue:       #93c5fd;
+      --blue-d:     #2563eb;
+      --yellow:     #fde68a;
+      --yellow-d:   #ca8a04;
+      --green:      #86efac;
+      --green-d:    #16a34a;
+      --purple:     #c4b5fd;
+      --purple-d:   #7c3aed;
+      --border-p:   #f0b8d4;
+      --border-b:   #bfdbfe;
+      --line:       #d0b8c8;
+      --text:       #4a3b3b;
+      --text-s:     #9a8080;
+      --jp:         'M PLUS Rounded 1c', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--jp);
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    /* ─── Hidden SVG filter ─── */
+    #filters { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+    /* ─── Screen state machine ─── */
+    #screen-setup,
+    #screen-animate,
+    #screen-result { display: none; }
+    body[data-state="setup"]   #screen-setup   { display: flex; }
+    body[data-state="animate"] #screen-animate { display: flex; }
+    body[data-state="result"]  #screen-result  { display: flex; }
+
+    /* ─── Header ─── */
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--bg);
+      border-bottom: 2.5px dashed var(--pink);
+      z-index: 20;
+    }
+    header h1 {
+      font-weight: 900;
+      font-size: 1.35rem;
+      color: var(--pink-d);
+      letter-spacing: 0.06em;
+    }
+
+    /* ─── Setup screen ─── */
+    #screen-setup {
+      flex-direction: column;
+      padding: 74px 18px 24px;
+      height: 100dvh;
+      overflow-y: auto;
+      gap: 18px;
+    }
+
+    .card {
+      border-radius: 16px 12px 18px 14px;
+      padding: 14px 16px;
+    }
+    .card-pink { background: var(--bg2); border: 2.5px solid var(--border-p); }
+    .card-blue { background: var(--bg3); border: 2.5px solid var(--border-b); }
+
+    .card-label {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-s);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Participant chips */
+    .chips-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .p-chip {
+      height: 44px;
+      width: 76px;
+      padding: 0 10px;
+      border: 2.5px solid var(--pink-d);
+      border-radius: 22px 16px 24px 14px;
+      background: var(--pink);
+      font-family: var(--jp);
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: #fff;
+      text-align: center;
+      outline: none;
+      cursor: text;
+      -webkit-appearance: none;
+    }
+    .p-chip:focus { box-shadow: 0 0 0 3px rgba(219,39,119,0.25); }
+
+    .p-chip[data-color="1"] { background: var(--blue);   border-color: var(--blue-d);   }
+    .p-chip[data-color="2"] { background: var(--yellow);  border-color: var(--yellow-d); color: var(--text); }
+    .p-chip[data-color="3"] { background: var(--green);   border-color: var(--green-d);  }
+    .p-chip[data-color="4"] { background: var(--purple);  border-color: var(--purple-d); }
+
+    .chip-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2.5px dashed var(--border-p);
+      background: transparent;
+      font-size: 1.4rem;
+      color: var(--text-s);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .chip-btn:active { background: var(--bg2); }
+
+    /* Options textarea */
+    #opts-ta {
+      width: 100%;
+      border: 2px solid var(--border-b);
+      border-radius: 10px 8px 12px 8px;
+      padding: 10px 14px;
+      font-family: var(--jp);
+      font-size: 1rem;
+      background: #fff;
+      color: var(--text);
+      resize: none;
+      outline: none;
+      line-height: 1.9;
+      min-height: 130px;
+    }
+    #opts-ta:focus { border-color: var(--blue-d); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+
+    .hint {
+      font-size: 0.78rem;
+      color: var(--text-s);
+      margin-top: 6px;
+    }
+
+    /* Start button */
+    #btn-start {
+      align-self: center;
+      font-family: var(--jp);
+      font-weight: 900;
+      font-size: 1.25rem;
+      padding: 16px 52px;
+      background: linear-gradient(135deg, #f9a8d4 0%, #c4b5fd 100%);
+      color: #fff;
+      border: none;
+      border-radius: 50% 22% 50% 22% / 22% 50% 22% 50%;
+      cursor: pointer;
+      min-height: 62px;
+      letter-spacing: 0.05em;
+      box-shadow: 0 4px 18px rgba(219,39,119,0.28);
+      transition: transform 0.12s, box-shadow 0.12s;
+      margin: 4px 0 12px;
+    }
+    #btn-start:active {
+      transform: scale(0.94);
+      box-shadow: 0 2px 8px rgba(219,39,119,0.2);
+    }
+
+    /* ─── Animate screen ─── */
+    #screen-animate {
+      flex-direction: column;
+      height: 100dvh;
+      width: 100%;
+      align-items: stretch;
+      padding-top: 58px;
+    }
+    #amida-svg {
+      width: 100%;
+      flex: 1;
+      display: block;
+      overflow: visible;
+    }
+
+    /* ─── Result screen ─── */
+    #screen-result {
+      position: fixed;
+      inset: 0;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.4rem;
+      background: var(--bg);
+      z-index: 50;
+      padding: 28px 20px;
+    }
+
+    .res-title {
+      font-size: clamp(1.5rem, 6vw, 2.2rem);
+      font-weight: 900;
+      color: var(--pink-d);
+      text-align: center;
+    }
+
+    #result-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .res-pair {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55em;
+      background: var(--bg2);
+      border: 2.5px solid var(--border-p);
+      border-radius: 18px 12px 20px 14px;
+      padding: 14px 20px;
+      font-size: clamp(1.15rem, 5vw, 1.65rem);
+    }
+    .res-who  { font-weight: 900; color: var(--pink-d); }
+    .res-arr  { color: var(--text-s); font-size: 0.9em; }
+    .res-what { font-weight: 700; color: var(--blue-d); }
+    .res-what.empty { color: var(--text-s); font-weight: 400; font-size: 0.82em; }
+
+    #btn-retry {
+      font-family: var(--jp);
+      font-weight: 700;
+      font-size: 1.05rem;
+      padding: 13px 44px;
+      background: var(--yellow);
+      border: 2.5px solid var(--yellow-d);
+      border-radius: 50px;
+      color: #78350f;
+      cursor: pointer;
+      min-height: 50px;
+      box-shadow: 0 3px 12px rgba(202,138,4,0.3);
+      transition: transform 0.1s;
+    }
+    #btn-retry:active { transform: scale(0.95); }
+  </style>
+</head>
+<body data-state="setup">
+
+<!-- SVG feTurbulence filter (reused by JS for wobbly lines) -->
+<svg id="filters" aria-hidden="true">
+  <defs>
+    <filter id="wobble" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="turbulence" baseFrequency="0.04" numOctaves="2" seed="7" result="noise" stitchTiles="stitch"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="3.5" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+
+<!-- Fixed header -->
+<header>
+  <!-- Cat face (inline SVG) -->
+  <svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true">
+    <circle cx="20" cy="24" r="13" fill="#f9a8d4"/>
+    <polygon points="7,14 2,2 15,11"  fill="#f9a8d4"/>
+    <polygon points="33,14 38,2 25,11" fill="#f9a8d4"/>
+    <polygon points="8,13 4,4 14,10"  fill="#fecdd3"/>
+    <polygon points="32,13 36,4 26,10" fill="#fecdd3"/>
+    <ellipse cx="14" cy="22" rx="2.4" ry="3.4" fill="#2d1515"/>
+    <ellipse cx="26" cy="22" rx="2.4" ry="3.4" fill="#2d1515"/>
+    <circle  cx="14.8" cy="21" r="0.85" fill="#fff"/>
+    <circle  cx="26.8" cy="21" r="0.85" fill="#fff"/>
+    <polygon points="20,27 18,30 22,30" fill="#fb7185"/>
+    <path d="M18,30 Q20,32.5 22,30" fill="none" stroke="#fb7185" stroke-width="1.3" stroke-linecap="round"/>
+    <line x1="1"  y1="26" x2="13" y2="25.5" stroke="#d4a0b0" stroke-width="1.1" stroke-linecap="round"/>
+    <line x1="1"  y1="29" x2="13" y2="28.5" stroke="#d4a0b0" stroke-width="1.1" stroke-linecap="round"/>
+    <line x1="27" y1="25.5" x2="39" y2="26"  stroke="#d4a0b0" stroke-width="1.1" stroke-linecap="round"/>
+    <line x1="27" y1="28.5" x2="39" y2="29"  stroke="#d4a0b0" stroke-width="1.1" stroke-linecap="round"/>
+  </svg>
+  <h1>あみだくじ</h1>
+</header>
+
+<!-- ── Setup Screen ── -->
+<section id="screen-setup">
+
+  <div class="card card-blue">
+    <div class="card-label">🍽 選択肢（1行に1つ）</div>
+    <textarea id="opts-ta" rows="5" placeholder="カレー&#10;ラーメン&#10;お寿司&#10;ピザ"></textarea>
+    <p class="hint">改行で区切って入力してください</p>
+  </div>
+
+  <button id="btn-start">あみだをつくる</button>
+
+</section>
+
+<!-- ── Animate Screen ── -->
+<section id="screen-animate" style="position: relative;">
+  <div id="animate-hint" style="position: absolute; top: 76px; width: 100%; text-align: center; font-weight: 900; color: var(--pink-d); pointer-events: none; z-index: 10; font-size: 1.2rem; background: rgba(250,247,240,0.85); padding: 8px 0; letter-spacing: 0.05em;">
+    👇 好きな場所をタップしてね！
+  </div>
+  <svg id="amida-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+</section>
+
+<!-- ── Result Screen ── -->
+<section id="screen-result">
+  <p class="res-title">🎉 けっかはっぴょう！</p>
+  <div id="result-list"></div>
+  <button id="btn-retry">もう一度</button>
+</section>
+
+<script>
+/* ══════════════════════════════════════════════
+   Utilities
+══════════════════════════════════════════════ */
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+const delay = ms => new Promise(r => setTimeout(r, ms));
+const rnd   = (a, b) => a + Math.random() * (b - a);
+const esc   = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const trunc = (s, n = 9) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+
+/* ══════════════════════════════════════════════
+   Amida Core
+══════════════════════════════════════════════ */
+function generateGrid(n) {
+  const rows = Math.max(8, n * 4);
+  const bars = [];
+  for (let r = 0; r < rows; r++) {
+    const row = new Array(n - 1).fill(false);
+    for (let c = 0; c < n - 1; c++) {
+      if (c > 0 && row[c - 1]) continue;
+      row[c] = Math.random() < 0.38;
+    }
+    bars.push(row);
+  }
+  return { n, rows, bars };
+}
+
+function buildAmida(options) {
+  const n = options.length;
+  const po = [...options];
+
+  const grid = generateGrid(n);
+  grid.po = po;
+  grid.ord = shuffle([...Array(n).keys()]);  // option column assignment
+  return grid;
+}
+
+/*
+  tracePath returns steps[] where:
+    steps[0] = { row: -1, col: startCol }   (above row 0)
+    steps[r+1] = { row: r, col: colAfterCrossingRowR }
+    steps[rows+1] = { row: rows, col: endCol }  (below last row)
+*/
+function tracePath(grid, startCol) {
+  let col = startCol;
+  const steps = [{ row: -1, col }];
+  for (let r = 0; r < grid.rows; r++) {
+    if (col < grid.n - 1 && grid.bars[r][col])    col++;
+    else if (col > 0     && grid.bars[r][col - 1]) col--;
+    steps.push({ row: r, col });
+  }
+  steps.push({ row: grid.rows, col });
+  return { endCol: col, steps };
+}
+
+/* ══════════════════════════════════════════════
+   SVG Layout
+══════════════════════════════════════════════ */
+function computeLayout(n, rows, w, h) {
+  const PX  = Math.max(30, Math.min(w * 0.11, 54));
+  const PY  = 62;
+  const uw  = w - PX * 2;
+  const uh  = h - PY * 2;
+
+  // rowY distributes bars evenly inside usable height
+  // segIdx 0..rows maps to n+1 gap boundaries
+  return {
+    colX: n === 1 ? () => w / 2 : i => PX + (i / (n - 1)) * uw,
+    rowY: r => PY + ((r + 0.5) / rows) * uh,
+    topY:    PY,
+    bottomY: h - PY,
+    labelTopY:    PY - 30,
+    labelBottomY: h - PY + 30,
+  };
+}
+
+/* ══════════════════════════════════════════════
+   SVG Drawing Helpers
+══════════════════════════════════════════════ */
+const NS = 'http://www.w3.org/2000/svg';
+
+function wobblyV(x, y1, y2) {
+  const midY = (y1 + y2) / 2;
+  const cx = +(x + rnd(-5, 5)).toFixed(2);
+  const cy = +(midY + rnd(-3, 3)).toFixed(2);
+  return `M ${x} ${y1} Q ${cx} ${cy} ${x} ${y2}`;
+}
+
+function wobblyH(x1, x2, y) {
+  const midX = (x1 + x2) / 2;
+  const cx = +(midX + rnd(-4, 4)).toFixed(2);
+  const cy = +(y + rnd(-4, 4)).toFixed(2);
+  return `M ${x1} ${y} Q ${cx} ${cy} ${x2} ${y}`;
+}
+
+function makePath(d, stroke, sw) {
+  const el = document.createElementNS(NS, 'path');
+  el.setAttribute('d', d);
+  el.setAttribute('stroke', stroke);
+  el.setAttribute('stroke-width', String(sw));
+  el.setAttribute('fill', 'none');
+  el.setAttribute('stroke-linecap', 'round');
+  return el;
+}
+
+function makeText(x, y, txt, color, size, weight) {
+  const el = document.createElementNS(NS, 'text');
+  el.setAttribute('x', String(+x.toFixed(1)));
+  el.setAttribute('y', String(+y.toFixed(1)));
+  el.setAttribute('text-anchor', 'middle');
+  el.setAttribute('dominant-baseline', 'middle');
+  el.setAttribute('fill', color);
+  el.setAttribute('font-family', '"M PLUS Rounded 1c", sans-serif');
+  el.setAttribute('font-size', String(size));
+  el.setAttribute('font-weight', String(weight));
+  el.textContent = txt;
+  return el;
+}
+
+function addPaw(svg, cx, cy, s, color, opacity) {
+  const g = document.createElementNS(NS, 'g');
+  g.setAttribute('opacity', String(+opacity.toFixed(2)));
+  g.setAttribute('transform', `rotate(${+rnd(-35, 35).toFixed(1)}, ${cx}, ${cy})`);
+
+  const pad = document.createElementNS(NS, 'ellipse');
+  pad.setAttribute('cx', cx); pad.setAttribute('cy', cy + s * 0.1);
+  pad.setAttribute('rx', s * 0.44); pad.setAttribute('ry', s * 0.37);
+  pad.setAttribute('fill', color);
+  g.appendChild(pad);
+
+  [[cx - s*0.33, cy - s*0.37],[cx - s*0.1, cy - s*0.52],
+   [cx + s*0.1,  cy - s*0.52],[cx + s*0.33, cy - s*0.37]].forEach(([tx, ty]) => {
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', tx); c.setAttribute('cy', ty); c.setAttribute('r', s * 0.16);
+    c.setAttribute('fill', color);
+    g.appendChild(c);
+  });
+  svg.appendChild(g);
+}
+
+/* ══════════════════════════════════════════════
+   Render
+══════════════════════════════════════════════ */
+const CHIP_COLORS  = ['#db2777','#2563eb','#ca8a04','#16a34a','#7c3aed'];
+const TRAIL_COLORS = ['#f9a8d4','#93c5fd','#fde68a','#86efac','#c4b5fd'];
+const PAW_COLORS   = ['#f9a8d4','#93c5fd','#fde68a','#c4b5fd'];
+
+function renderAmida(grid, layout, svg) {
+  svg.innerHTML = '';
+  const segs = {};
+  const W = svg.clientWidth, H = svg.clientHeight;
+
+  // Background paw prints
+  for (let i = 0; i < 5; i++) {
+    addPaw(svg, rnd(W*0.08, W*0.92), rnd(H*0.12, H*0.88),
+           rnd(18, 36), PAW_COLORS[i % 4], rnd(0.1, 0.2));
+  }
+
+  // Vertical line segments: v_${col}_${segIdx}  (segIdx = 0..rows)
+  for (let col = 0; col < grid.n; col++) {
+    const x = layout.colX(col);
+    for (let si = 0; si <= grid.rows; si++) {
+      const y1 = si === 0          ? layout.topY    : layout.rowY(si - 1);
+      const y2 = si === grid.rows  ? layout.bottomY : layout.rowY(si);
+      const el = makePath(wobblyV(x, y1, y2), '#d0b8c8', 2.5);
+      svg.appendChild(el);
+      segs[`v_${col}_${si}`] = { el, len: el.getTotalLength() };
+    }
+  }
+
+  // Horizontal bars: h_${row}_${leftCol}
+  for (let r = 0; r < grid.rows; r++) {
+    for (let c = 0; c < grid.n - 1; c++) {
+      if (!grid.bars[r][c]) continue;
+      const y = layout.rowY(r);
+      const el = makePath(wobblyH(layout.colX(c), layout.colX(c+1), y), '#d0b8c8', 2.5);
+      svg.appendChild(el);
+      segs[`h_${r}_${c}`] = { el, len: el.getTotalLength() };
+    }
+  }
+
+  // Labels
+  const lfs = Math.max(11, Math.min(15, Math.floor(W / grid.n / 2)));
+  for (let c = 0; c < grid.n; c++) {
+    const x = layout.colX(c);
+    
+    // Top interactive button
+    const g = document.createElementNS(NS, 'g');
+    g.style.cursor = 'pointer';
+    
+    const circle = document.createElementNS(NS, 'circle');
+    circle.setAttribute('cx', x);
+    circle.setAttribute('cy', layout.labelTopY);
+    circle.setAttribute('r', Math.max(15, lfs * 1.3));
+    circle.setAttribute('fill', '#f9a8d4');
+    g.appendChild(circle);
+
+    const txt = makeText(x, layout.labelTopY, '?', '#fff', lfs + 4, 900);
+    g.appendChild(txt);
+    
+    g.addEventListener('click', () => {
+      if (svg.dataset.animating) return;
+      svg.dataset.animating = 'true';
+      const hint = document.getElementById('animate-hint');
+      if (hint) hint.style.display = 'none';
+      
+      circle.setAttribute('fill', '#db2777');
+      txt.textContent = '🎯';
+      
+      const { steps } = tracePath(grid, c);
+      animatePath(steps, segs, '#db2777').then(() => {
+        setTimeout(() => showResult(grid, c), 250);
+      });
+    });
+    
+    svg.appendChild(g);
+
+    // Bottom label
+    const optI = grid.ord[c];
+    const label = trunc(grid.po[optI], 8);
+    svg.appendChild(makeText(x, layout.labelBottomY, label, '#4a3b3b', lfs, 700));
+  }
+
+  return segs;
+}
+
+/* ══════════════════════════════════════════════
+   Animation
+══════════════════════════════════════════════ */
+/*
+  Mapping steps[] → segment keys:
+  Between steps[i] (row=ri, col=ci) and steps[i+1] (row=ri+1, col=ci1):
+    - Vertical going down: v_${ci}_${ri+1}   (ri=-1 → segIdx=0)
+    - If ci≠ci1, horizontal bar at row ri+1: h_${ri+1}_${min(ci,ci1)}
+*/
+function buildSegKeys(steps) {
+  const keys = [];
+  for (let i = 0; i < steps.length - 1; i++) {
+    const { row: ri, col: ci } = steps[i];
+    const { col: ci1 } = steps[i + 1];
+    keys.push({ key: `v_${ci}_${ri + 1}`, dir: 1 });
+    if (ci !== ci1) {
+      keys.push({ key: `h_${ri + 1}_${Math.min(ci, ci1)}`, dir: ci < ci1 ? 1 : -1 });
+    }
+  }
+  return keys;
+}
+
+function animatePath(steps, segs, color) {
+  return new Promise(resolve => {
+    const SPEED = 800; // px per second
+    const keys  = buildSegKeys(steps);
+    let i = 0;
+
+    function next() {
+      if (i >= keys.length) { resolve(); return; }
+      const info = keys[i++];
+      const seg = segs[info.key];
+      if (!seg || seg.len < 0.5) { next(); return; }
+
+      const ov = seg.el.cloneNode();
+      ov.setAttribute('stroke', color);
+      ov.setAttribute('stroke-width', '5');
+      ov.style.strokeDasharray  = seg.len;
+      
+      const startOffset = info.dir === 1 ? seg.len : -seg.len;
+      ov.style.strokeDashoffset = startOffset;
+      seg.el.parentNode.appendChild(ov);
+
+      ov.animate(
+        [{ strokeDashoffset: startOffset }, { strokeDashoffset: 0 }],
+        { duration: Math.max(60, (seg.len / SPEED) * 1000), fill: 'forwards', easing: 'linear' }
+      ).onfinish = next;
+    }
+    next();
+  });
+}
+
+// Animation is triggered by tapping on the top nodes in renderAmida
+
+/* ══════════════════════════════════════════════
+   Result
+══════════════════════════════════════════════ */
+function showResult(grid, startCol) {
+  const list = document.getElementById('result-list');
+  list.innerHTML = '';
+  
+  const { endCol } = tracePath(grid, startCol);
+  const option = grid.po[grid.ord[endCol]];
+  
+  const div = document.createElement('div');
+  div.className = 'res-pair';
+  div.style.flexDirection = 'column';
+  div.style.gap = '10px';
+  div.style.padding = '24px 20px';
+  div.innerHTML =
+    `<span style="font-size: 0.9em; color: var(--text-s); font-weight: 700;">選ばれたのは…</span>` +
+    `<span class="res-what" style="font-size: 1.5em; color: var(--pink-d);">${esc(option)}</span>`;
+  list.appendChild(div);
+  
+  document.body.dataset.state = 'result';
+}
+
+/* ══════════════════════════════════════════════
+   Event handlers
+══════════════════════════════════════════════ */
+// Start
+document.getElementById('btn-start').addEventListener('click', () => {
+  const options = document.getElementById('opts-ta').value
+    .split('\n').map(s => s.trim()).filter(Boolean);
+
+  if (options.length < 2) { alert('選択肢は2つ以上入力してください'); return; }
+
+  const grid = buildAmida(options);
+  document.body.dataset.state = 'animate';
+  
+  const hint = document.getElementById('animate-hint');
+  if (hint) hint.style.display = 'block';
+
+  // Double rAF: ensure SVG is laid out and measurable
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const svg = document.getElementById('amida-svg');
+    svg.dataset.animating = '';
+    const { width: w, height: h } = svg.getBoundingClientRect();
+    const layout = computeLayout(grid.n, grid.rows, w, h);
+    const segs   = renderAmida(grid, layout, svg);
+  }));
+});
+
+// Retry
+document.getElementById('btn-retry').addEventListener('click', () => {
+  document.getElementById('amida-svg').innerHTML = '';
+  document.body.dataset.state = 'setup';
+});
+</script>
+</body>
+</html>
