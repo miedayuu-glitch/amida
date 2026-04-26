@@ -309,7 +309,7 @@
 <section id="screen-setup">
 
   <div class="card card-blue">
-    <div class="card-label">🍽 選択肢（1行に1つ）</div>
+    <div class="card-label">🍽 選択肢</div>
     <textarea id="opts-ta" rows="5" placeholder="カレー&#10;ラーメン&#10;お寿司&#10;ピザ"></textarea>
     <p class="hint">改行で区切って入力してください</p>
   </div>
@@ -551,7 +551,7 @@ function renderAmida(grid, layout, svg) {
       
       const { steps } = tracePath(grid, c);
       animatePath(steps, segs, '#db2777').then(() => {
-        setTimeout(() => showResult(grid, c), 250);
+        setTimeout(() => showResult(grid, c), 500);
       });
     });
     
@@ -590,7 +590,7 @@ function buildSegKeys(steps) {
 
 function animatePath(steps, segs, color) {
   return new Promise(resolve => {
-    const SPEED = 800; // px per second
+    const SPEED = 500; // px per second
     const keys  = buildSegKeys(steps);
     let i = 0;
 
